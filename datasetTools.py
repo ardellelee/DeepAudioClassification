@@ -5,14 +5,16 @@ from __future__ import division
 from __future__ import print_function
 
 import os
-from PIL import Image
 from random import shuffle
 import numpy as np
 import pickle
 
 from imageFilesTools import getImageData
-from config import datasetPath
+from config import datasetPath, HDFS_DATA_DIR
 from config import slicesPath
+import errno
+
+from hdfsTools import hdfsTools
 
 #Creates name of dataset from parameters
 def getDatasetName(nbPerGenre, sliceSize):
@@ -23,7 +25,7 @@ def getDatasetName(nbPerGenre, sliceSize):
 #Creates or loads dataset if it exists
 #Mode = "train" or "test"
 def getDataset(nbPerGenre, genres, sliceSize, validationRatio, testRatio, mode):
-    print("[+] Dataset name: {}".format(getDatasetName(nbPerGenre,sliceSize)))
+    print("[+] dataset name: {}".format(getDatasetName(nbPerGenre,sliceSize)))
     if not os.path.isfile(datasetPath+"train_X_"+getDatasetName(nbPerGenre, sliceSize)+".p"):
         print("[+] Creating dataset with {} slices of size {} per genre... ⌛️".format(nbPerGenre,sliceSize))
         createDatasetFromSlices(nbPerGenre, genres, sliceSize, validationRatio, testRatio) 
@@ -72,7 +74,23 @@ def saveDataset(train_X, train_y, validation_X, validation_y, test_X, test_y, nb
     pickle.dump(validation_y, open("{}validation_y_{}.p".format(datasetPath,datasetName), "wb" ))
     pickle.dump(test_X, open("{}test_X_{}.p".format(datasetPath,datasetName), "wb" ))
     pickle.dump(test_y, open("{}test_y_{}.p".format(datasetPath,datasetName), "wb" ))
-    print("    Dataset saved! ✅💾")
+
+    #Save a copy of dataset in hdfs
+    client_hdfs = hdfsTools()
+    model_dataset = "{}train_X_{}.p".format(datasetPath,datasetName)
+    client_hdfs.writeHdfs(model_dataset, HDFS_DATA_DIR+model_dataset, "p")
+    model_dataset = "{}train_y_{}.p".format(datasetPath,datasetName)
+    client_hdfs.writeHdfs(model_dataset, HDFS_DATA_DIR+model_dataset, "p")
+    model_dataset = "{}validation_X_{}.p".format(datasetPath,datasetName)
+    client_hdfs.writeHdfs(model_dataset, HDFS_DATA_DIR+model_dataset, "p")
+    model_dataset = "{}validation_y_{}.p".format(datasetPath,datasetName)
+    client_hdfs.writeHdfs(model_dataset, HDFS_DATA_DIR+model_dataset, "p")
+    model_dataset = "{}test_X_{}.p".format(datasetPath,datasetName)
+    client_hdfs.writeHdfs(model_dataset, HDFS_DATA_DIR+model_dataset, "p")
+    model_dataset = "{}test_y_{}.p".format(datasetPath,datasetName)
+    client_hdfs.writeHdfs(model_dataset, HDFS_DATA_DIR+model_dataset, "p")
+
+    print("    dataset saved! ✅💾")
 
 #Creates and save dataset from slices
 def createDatasetFromSlices(nbPerGenre, genres, sliceSize, validationRatio, testRatio):
@@ -81,6 +99,7 @@ def createDatasetFromSlices(nbPerGenre, genres, sliceSize, validationRatio, test
         print("-> Adding {}...".format(genre))
         #Get slices in genre subfolder
         filenames = os.listdir(slicesPath+genre)
+        print('*********** slice filenames: ', len(filenames))
         filenames = [filename for filename in filenames if filename.endswith('.png')]
         filenames = filenames[:nbPerGenre]
         #Randomize file selection for this genre
@@ -110,7 +129,7 @@ def createDatasetFromSlices(nbPerGenre, genres, sliceSize, validationRatio, test
     validation_y = np.array(y[trainNb:trainNb+validationNb])
     test_X = np.array(X[-testNb:]).reshape([-1, sliceSize, sliceSize, 1])
     test_y = np.array(y[-testNb:])
-    print("    Dataset created! ✅")
+    print("    dataset created! ✅")
         
     #Save
     saveDataset(train_X, train_y, validation_X, validation_y, test_X, test_y, nbPerGenre, genres, sliceSize)

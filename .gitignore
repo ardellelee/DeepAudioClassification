@@ -1,0 +1,17 @@
+# data
+data/
+img/
+
+
+# Jupyter notebook
+*.ipynb
+checkpoint
+
+
+# Intermediate files
+*.pyc
+__pycache__
+
+# Result file
+model/
+log/
