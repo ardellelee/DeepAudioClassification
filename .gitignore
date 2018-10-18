@@ -1,12 +1,17 @@
+# MacOS
+.DS_Store
+
 # data
 data/
 img/
 
+# Pycharm
+.idea
 
 # Jupyter notebook
 *.ipynb
+.ipynb_checkpoints
 checkpoint
-
 
 # Intermediate files
 *.pyc
